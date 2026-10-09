@@ -1,0 +1,22 @@
+From: Salt OpenWrt packaging
+Subject: [PATCH] ssh: read the shim as a text resource in sourceless builds
+
+The TCP transport imports salt.master, which imports salt.client.ssh. The
+SSH shim is read at import time as text to send to a remote interpreter;
+it cannot be replaced by .pyc. OpenWrt preserves this one script as .txt.
+Prefer the original .py for source distributions. Do not decode bytecode
+as UTF-8 when the source is absent.
+
+--- a/salt/client/ssh/__init__.py
++++ b/salt/client/ssh/__init__.py
+@@ -317,8 +317,8 @@
+ if not salt.utils.platform.is_windows() and not salt.utils.platform.is_junos():
+     shim_file = os.path.join(os.path.dirname(__file__), "ssh_py_shim.py")
+     if not os.path.exists(shim_file):
+-        # On esky builds we only have the .pyc file
+-        shim_file += "c"
++        # The shim is transmitted as source, not imported as Python bytecode.
++        shim_file = os.path.join(os.path.dirname(__file__), "ssh_py_shim.txt")
+     with salt.utils.files.fopen(shim_file) as ssh_py_shim:
+         SSH_PY_SHIM = ssh_py_shim.read()
+ else:

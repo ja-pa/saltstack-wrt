@@ -2,6 +2,12 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=python-salt
 PKG_VERSION:=3008.3
 PKG_RELEASE:=7
+# Experimental bytecode-only packaging is restricted to the x86_64 POC.
+ifeq ($(CONFIG_TARGET_x86_64),y)
+PKG_RELEASE:=8
+SALT_DELETE_SOURCES=$(call Python3/DeleteSourceFiles,$(1))
+SALT_PRESERVE_SHIM=mv $(1)$(PYTHON3_PKG_DIR)/salt/client/ssh/ssh_py_shim.py $(1)$(PYTHON3_PKG_DIR)/salt/client/ssh/ssh_py_shim.txt
+endif
 PYPI_NAME:=salt
 PKG_HASH:=4bfa995ecde1491916bc9fd0abebf38d39eaca24c1e99e29c5046b97b8754f30
 PKG_LICENSE:=Apache-2.0
@@ -66,18 +72,21 @@ define Package/minion-openwrt
   EXTRA_DEPENDS:=salt-minion (= $(PKG_VERSION)-r$(PKG_RELEASE)), minion-opkg (= $(PKG_VERSION)-r$(PKG_RELEASE)), minion-uci (= $(PKG_VERSION)-r$(PKG_RELEASE)), minion-service (= $(PKG_VERSION)-r$(PKG_RELEASE))
 endef
 
-# Salt discovers execution modules dynamically; retain sources with bytecode.
+# Patch 030 enables discovery of OpenWrt's adjacent .pyc files.
 define Package/python3-salt/install
 	$(INSTALL_DIR) $(1)$(PYTHON3_PKG_DIR)
 	$(CP) $(PKG_INSTALL_DIR)$(PYTHON3_PKG_DIR)/* $(1)$(PYTHON3_PKG_DIR)/
 	$(HOST_PYTHON3_BIN) ./files/prune.py $(1)$(PYTHON3_PKG_DIR)/salt $(SALT_PRUNE_PATHS)
 	$(call Python3/CompileAll,$(1))
+	$(call SALT_PRESERVE_SHIM,$(1))
+	$(call SALT_DELETE_SOURCES,$(1))
 endef
 
 define Package/minion-opkg/install
 	$(INSTALL_DIR) $(1)$(PYTHON3_PKG_DIR)/salt/modules
 	$(INSTALL_DATA) ./files/opkg.py $(1)$(PYTHON3_PKG_DIR)/salt/modules/opkg.py
 	$(call Python3/CompileAll,$(1))
+	$(call SALT_DELETE_SOURCES,$(1))
 endef
 
 define Package/minion-openwrt/install
@@ -93,6 +102,7 @@ define Package/minion-uci/install
 	$(INSTALL_DATA) ./files/wrt_config.py $(1)$(PYTHON3_PKG_DIR)/salt/modules/wrt_config.py
 	$(INSTALL_DATA) ./files/wrt_config_state.py $(1)$(PYTHON3_PKG_DIR)/salt/states/wrt_config.py
 	$(call Python3/CompileAll,$(1))
+	$(call SALT_DELETE_SOURCES,$(1))
 endef
 
 define Package/minion-service/install
@@ -100,6 +110,7 @@ define Package/minion-service/install
 	$(INSTALL_DATA) ./files/openwrt_service.py $(1)$(PYTHON3_PKG_DIR)/salt/modules/openwrt_service.py
 	$(INSTALL_DATA) ./files/service-provider.conf $(1)/etc/salt/minion.d/20-openwrt-service.conf
 	$(call Python3/CompileAll,$(1))
+	$(call SALT_DELETE_SOURCES,$(1))
 endef
 
 define Package/salt-minion/conffiles

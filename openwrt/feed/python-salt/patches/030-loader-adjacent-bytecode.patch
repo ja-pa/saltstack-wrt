@@ -1,0 +1,24 @@
+From: Salt OpenWrt packaging
+Subject: [PATCH] loader: discover adjacent sourceless Python bytecode
+
+OpenWrt uses compileall -b and removes Python sources. LazyLoader already
+has a SourcelessFileLoader and supports __init__.pyc packages, but skips
+adjacent module.pyc during discovery. Allow these through the existing
+suffix/optimization ordering, which continues to prefer .py over .pyc.
+Importlib still validates the bytecode header when loading.
+
+--- a/salt/loader/lazy.py
++++ b/salt/loader/lazy.py
+@@ -730,12 +730,6 @@
+                             # exists, so skip this.
+                             continue
+ 
+-                    if not dirname and ext == ".pyc":
+-                        # On Python 3, we should only load .pyc files from the
+-                        # __pycache__ subdirectory (i.e. when dirname is not an
+-                        # empty string).
+-                        continue
+-
+                     # Made it this far - add it
+                     self.file_mapping[f_noext] = (fpath, ext, opt_index)
+ 
