@@ -1,0 +1,18 @@
+From: OpenWrt Salt packaging
+Subject: Avoid duplicate wheel scripts rejected by python-installer
+
+Salt 3008.3 emits both console entry points and legacy .data/scripts with
+the same filenames. OpenWrt's python-installer raises FileExistsError while
+installing that wheel. Keep the console entry points and omit legacy copies.
+
+--- a/setup.py
++++ b/setup.py
+@@ -1019,7 +1019,7 @@
+ 
+     @property
+     def _property_scripts(self):
+-        return salt_build_backend.get_scripts(self)
++        return []
+ 
+     @property
+     def _property_install_requires(self):

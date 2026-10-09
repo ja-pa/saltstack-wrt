@@ -1,0 +1,14 @@
+OpenWrt TCP-only profile: omit the ZeroMQ runtime dependency from wheel metadata.
+The transport factories and guarded imports already support absence of pyzmq.
+This build uses dynamic requirements (USE_STATIC_REQUIREMENTS is not enabled).
+
+--- a/tools/pkg/salt_build_backend.py
++++ b/tools/pkg/salt_build_backend.py
+@@ -138,7 +138,6 @@
+         # Base requirements
+         req_files = [
+             os.path.join(PROJECT_ROOT, "requirements", "base.txt"),
+-            os.path.join(PROJECT_ROOT, "requirements", "zeromq.txt"),
+             os.path.join(PROJECT_ROOT, "requirements", "crypto.txt"),
+         ]
+         if is_osx:

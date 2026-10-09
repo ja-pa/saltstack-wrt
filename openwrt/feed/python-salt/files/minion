@@ -1,0 +1,11 @@
+# Set master and a unique id in /etc/salt/minion.d/local.conf before starting.
+master: salt
+transport: tcp
+# TCP port on the mixed-transport example master; publication port is discovered.
+master_port: 4606
+pki_dir: /etc/salt/pki/minion
+cachedir: /var/cache/salt/minion
+sock_dir: /var/run/salt/minion
+pidfile: /var/run/salt-minion.pid
+log_file: /var/log/salt/minion
+log_level: warning

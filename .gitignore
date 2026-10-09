@@ -1,0 +1,3 @@
+/.cache/
+/openwrt/output/
+__pycache__/
