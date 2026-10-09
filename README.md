@@ -15,14 +15,17 @@ build also bootstraps Rust/LLVM and takes substantially longer.
 
 - `openwrt/feed/`: package recipes, patches and OpenWrt Salt providers.
 - `openwrt/docker/`: SDK build image.
-- `openwrt/baselines/`: package inventories used by build reports and regressions.
-- `scripts/`: SDK setup, package export, manifests and size reports.
+- `scripts/`: SDK setup, package export and build metadata.
 
 Outputs include IPKs, dependency-ordered installation manifests, checksums,
-build metadata and the playground update manifest. SDK downloads are cached
+build metadata and `build-manifest.json` (schema 2: versions, architectures,
+dependencies, sizes, checksums and content-based build identity). SDK downloads are cached
 in `.cache/`. Build outputs and caches are ignored by Git.
 `SALT_BUILD_CACHE` and `SALT_BUILD_OUTPUT` optionally override these directories;
 relative overrides are resolved from the caller's working directory.
+
+Loader verification, size analysis, historical baselines and comparison reports
+belong to the test repository. They are not required to build or export packages.
 
 The minion uses TCP transport by default. Optional packages add opkg, UCI and
 procd/ubus providers; `minion-openwrt` installs the complete set.

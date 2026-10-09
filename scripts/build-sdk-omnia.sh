@@ -69,10 +69,7 @@ if grep -Eq '^CONFIG_PACKAGE_(python3-pyzmq|libzmq[^=]*)=[my]' .config; then
 fi
 make -j"${JOBS:-4}" package/compile V=s
 python3 /source/scripts/export-packages.py /sdk /output omnia
-python3 /source/scripts/salt-package-report.py compare \
-    /source/openwrt/baselines/python3-salt-3008.3-r2.json /output \
-    /output/python3-salt_*.ipk
-find /source/openwrt/feed /source/scripts /source/openwrt/docker /source/openwrt/baselines -type f -not -path '*/__pycache__/*' -print0 | sort -z | xargs -0 sha256sum > /output/recipe-checksums.txt
+find /source/openwrt/feed /source/scripts /source/openwrt/docker -type f -not -path '*/__pycache__/*' -print0 | sort -z | xargs -0 sha256sum > /output/recipe-checksums.txt
 {
     echo sdk=TurrisOS-9.1.1-omnia
     echo sdk_sha256=d3e48600fcb1f53bea679c53b26158e2cd4357e6fa9e46c77627ce443275ba29

@@ -89,6 +89,6 @@ if target == 'x86_64':
     source_files = sorted(p.relative_to(root).as_posix() for p in root.rglob('*.py') if p.is_file())
     (output / 'salt-source-files.json').write_text(json.dumps(source_files, indent=2) + '\n')
 
-# Update identity includes archive content, dependencies and loader expectations.
-from update_manifest import create
+# Build identity includes archive content and dependency metadata.
+from build_manifest import create
 create(output, target)

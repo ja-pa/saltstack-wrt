@@ -1,7 +1,0 @@
-{
-  "python3-salt_3008.3-r6_arm_cortex-a9_vfpv3-d16.ipk": "934d3dda02ff3317fe375f0ca1b48068b99544bc9df8c081824c6143cc4ef9f6",
-  "salt-minion_3008.3-r6_arm_cortex-a9_vfpv3-d16.ipk": "59bc77e273b240f9d1646ce193bb999781e7fffcf326e36e416843ab17097a1e",
-  "minion-opkg_3008.3-r6_arm_cortex-a9_vfpv3-d16.ipk": "2e1518373236d5ff04c3111f9d464abe70580c58c4fac9822d0b098c737c0b5e",
-  "minion-uci_3008.3-r6_arm_cortex-a9_vfpv3-d16.ipk": "dbc14e7e91b0070332aefa068b56c7171ede922698312b7fe067535e48e8192e",
-  "minion-openwrt_3008.3-r6_arm_cortex-a9_vfpv3-d16.ipk": "b1fa5e1c55dcb50fbf21422161da574fe783776d4b10e00ba6e339f967d1a178"
-}
