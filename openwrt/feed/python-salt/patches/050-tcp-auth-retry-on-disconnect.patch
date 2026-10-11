@@ -1,0 +1,46 @@
+From: Salt OpenWrt packaging
+Subject: [PATCH] crypt: retry authentication when the TCP stream closes
+
+A master restart can close an in-flight authentication request. Unlike a
+request timeout, StreamClosedError escapes sign_in and leaves the shared
+authentication future pending forever. Use the existing bounded/backoff
+retry path so future authentication callers can make progress. Do not catch
+CancelledError: shutting down the minion must still cancel the operation.
+
+On first startup singleton initialization creates minion.pem. Recompute the
+cache key afterwards: its mtime is part of the identity. Otherwise publish
+and request channels obtain different AsyncAuth objects, and invalidating
+the publisher on a master restart leaves the requester using stale AES creds.
+
+--- a/salt/crypt.py
++++ b/salt/crypt.py
+@@ -25,6 +25,7 @@
+ 
+ import tornado.concurrent
+ import tornado.ioloop
++import tornado.iostream
+ 
+ import salt.cache
+ import salt.channel.client
+@@ -1087,6 +1088,9 @@
+             # references it-- this forces a reference while we return to the caller
+             auth = object.__new__(cls)
+             auth.__singleton_init__(opts, io_loop=io_loop)
++            # Initialization may create the keypair; cache its final identity.
++            # Both request and publish channels must share this authenticator.
++            key = cls.__key(opts)
+             loop_instance_map[key] = auth
+         else:
+             log.debug("Re-using AsyncAuth for %s", key)
+@@ -1245,6 +1249,11 @@
+                 attempts += 1
+                 try:
+                     creds = await self.sign_in(channel=channel)
++                except tornado.iostream.StreamClosedError:
++                    log.warning(
++                        "TCP connection to master closed during authentication; retrying"
++                    )
++                    creds = "retry"
+                 except SaltClientError as exc:
+                     error = exc
+                     break

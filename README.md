@@ -5,7 +5,7 @@ This repository can be built on its own; it does not depend on the test reposito
 
 ## Bytecode packaging
 
-Both Omnia and x86_64 build Salt packages as `3008.3-r9`, using the target
+Both Omnia and x86_64 build Salt packages as `3008.3-r10`, using the target
 SDK Python and OpenWrt's adjacent `.pyc` layout (`compileall -b`). Sources are
 removed after compilation from the runtime and opkg/UCI/procd addons.
 The existing prune list and dependencies are unchanged.
@@ -23,6 +23,22 @@ of compatibility with every source-reading Salt feature or Salt SSH thin
 generation. Normal imported docstrings remain in unoptimized bytecode.
 Build with the target script below; regression tests are in the companion
 test repository (`bash test-omnia.sh` and `bash test-x86_64.sh`).
+
+## TCP authentication recovery (r10)
+
+Patch 050 retries authentication when the master closes the TCP request stream.
+Upstream 3008.3 lets `StreamClosedError` escape the authentication coroutine,
+leaving its shared future pending and preventing later authentication attempts.
+The patch uses the existing retry/backoff and `auth_retries` limit; cancellation
+and permanent `SaltClientError` failures keep their existing behavior.
+It also caches a newly created authenticator under the final keypair identity.
+On a first start, key generation changes the identity's mtime; using the old
+identity creates separate publish/request authenticators and leaves one using
+stale AES credentials after a master restart.
+The companion tests exercise a real socket disconnect against installed bytecode,
+first-key singleton identity, retry exhaustion and cancellation, then restart
+and recreate an upstream master
+while checking that the ARM daemon PID/starttime and accepted keys remain intact.
 
 The package uses the standard OpenWrt/Turris maintainer scripts. OpenWrt
 fresh installs enable and start salt-minion. Turris 9.1.1 enables services

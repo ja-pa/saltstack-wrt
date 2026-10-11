@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 PKG_NAME:=python-salt
 PKG_VERSION:=3008.3
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 PYPI_NAME:=salt
 PKG_HASH:=4bfa995ecde1491916bc9fd0abebf38d39eaca24c1e99e29c5046b97b8754f30
 PKG_LICENSE:=Apache-2.0
