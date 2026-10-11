@@ -24,11 +24,12 @@ generation. Normal imported docstrings remain in unoptimized bytecode.
 Build with the target script below; regression tests are in the companion
 test repository (`bash test-omnia.sh` and `bash test-x86_64.sh`).
 
-The package uses the standard OpenWrt/Turris maintainer scripts. A fresh
-live installation enables and starts salt-minion. Turris image-root installs
-only enable services listed in `/etc/services_wanted`; OpenWrt follows its
-default image policy. Configure the master before installing. Upgrades follow
-the platform service lifecycle instead of bypassing its post-install hook.
+The package uses the standard OpenWrt/Turris maintainer scripts. OpenWrt
+fresh installs enable and start salt-minion. Turris 9.1.1 enables services
+listed in `/etc/services_wanted` and restarts enabled services on live
+installs; an unlisted, disabled minion stays disabled. This also controls
+activation in Turris image roots. Configure the master before installing
+and use the platform's normal service enable/start commands as needed.
 
 | Target | System | Build | Output |
 | --- | --- | --- | --- |
