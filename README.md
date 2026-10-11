@@ -3,13 +3,12 @@
 Package definitions and reproducible SDK build helpers for Salt 3008.3.
 This repository can be built on its own; it does not depend on the test repository.
 
-## Experimental branch: x86_64 bytecode packaging
+## Bytecode packaging
 
-`codex/pyc-only-poc` builds x86_64 Salt packages as `3008.3-r8`, using the
+Both Omnia and x86_64 build Salt packages as `3008.3-r9`, using the target
 SDK Python and OpenWrt's adjacent `.pyc` layout (`compileall -b`). Sources are
-removed after compilation from the runtime and opkg/UCI/procd addons. The
-existing prune list and dependencies are unchanged. Omnia keeps r7 packaging
-with sources; this experiment is tested only on x86_64.
+removed after compilation from the runtime and opkg/UCI/procd addons.
+The existing prune list and dependencies are unchanged.
 
 Patch 030 allows the Salt loader to discover adjacent bytecode, retaining
 source precedence, `__pycache__` support and importlib's bytecode validation.
@@ -19,11 +18,16 @@ because Salt transmits it to a remote interpreter rather than importing it;
 it is packaged as `ssh_py_shim.txt`. TCP minion startup also imports this code.
 
 Source inspection such as `baredoc` cannot inspect the removed sources, and
-tracebacks cannot show their source lines. This is a minion POC, not a promise
+tracebacks cannot show their source lines. This is a minion package, not a promise
 of compatibility with every source-reading Salt feature or Salt SSH thin
 generation. Normal imported docstrings remain in unoptimized bytecode.
-Build with `bash build-x86_64.sh`; runtime and loader regression tests are in
-the companion test repository (`bash test-x86_64.sh`).
+Build with the target script below; regression tests are in the companion
+test repository (`bash test-omnia.sh` and `bash test-x86_64.sh`).
+
+The package uses the standard OpenWrt/Turris maintainer scripts. A fresh
+live installation enables and starts salt-minion; an image-root installation
+enables it for boot. Configure the master before installing. Upgrades follow
+the platform service lifecycle instead of bypassing its post-install hook.
 
 | Target | System | Build | Output |
 | --- | --- | --- | --- |
