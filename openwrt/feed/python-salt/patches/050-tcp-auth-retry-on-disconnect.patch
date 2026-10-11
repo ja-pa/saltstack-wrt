@@ -1,0 +1,31 @@
+From: Salt OpenWrt packaging
+Subject: [PATCH] crypt: retry authentication when the TCP stream closes
+
+A master restart can close an in-flight authentication request. Unlike a
+request timeout, StreamClosedError escapes sign_in and leaves the shared
+authentication future pending forever. Use the existing bounded/backoff
+retry path so future authentication callers can make progress. Do not catch
+CancelledError: shutting down the minion must still cancel the operation.
+
+--- a/salt/crypt.py
++++ b/salt/crypt.py
+@@ -25,6 +25,7 @@
+ 
+ import tornado.concurrent
+ import tornado.ioloop
++import tornado.iostream
+ 
+ import salt.cache
+ import salt.channel.client
+@@ -1245,6 +1246,11 @@
+                 attempts += 1
+                 try:
+                     creds = await self.sign_in(channel=channel)
++                except tornado.iostream.StreamClosedError:
++                    log.warning(
++                        "TCP connection to master closed during authentication; retrying"
++                    )
++                    creds = "retry"
+                 except SaltClientError as exc:
+                     error = exc
+                     break
