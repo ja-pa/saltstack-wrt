@@ -25,8 +25,9 @@ Build with the target script below; regression tests are in the companion
 test repository (`bash test-omnia.sh` and `bash test-x86_64.sh`).
 
 The package uses the standard OpenWrt/Turris maintainer scripts. A fresh
-live installation enables and starts salt-minion; an image-root installation
-enables it for boot. Configure the master before installing. Upgrades follow
+live installation enables and starts salt-minion. Turris image-root installs
+only enable services listed in `/etc/services_wanted`; OpenWrt follows its
+default image policy. Configure the master before installing. Upgrades follow
 the platform service lifecycle instead of bypassing its post-install hook.
 
 | Target | System | Build | Output |
