@@ -31,8 +31,13 @@ Upstream 3008.3 lets `StreamClosedError` escape the authentication coroutine,
 leaving its shared future pending and preventing later authentication attempts.
 The patch uses the existing retry/backoff and `auth_retries` limit; cancellation
 and permanent `SaltClientError` failures keep their existing behavior.
+It also caches a newly created authenticator under the final keypair identity.
+On a first start, key generation changes the identity's mtime; using the old
+identity creates separate publish/request authenticators and leaves one using
+stale AES credentials after a master restart.
 The companion tests exercise a real socket disconnect against installed bytecode,
-retry exhaustion and cancellation, then restart and recreate an upstream master
+first-key singleton identity, retry exhaustion and cancellation, then restart
+and recreate an upstream master
 while checking that the ARM daemon PID/starttime and accepted keys remain intact.
 
 The package uses the standard OpenWrt/Turris maintainer scripts. OpenWrt
