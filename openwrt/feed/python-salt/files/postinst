@@ -1,3 +1,0 @@
-#!/bin/sh
-# Deliberately opt-in: configure the master and start/enable the service manually.
-exit 0
