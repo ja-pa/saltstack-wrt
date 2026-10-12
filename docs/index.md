@@ -1,53 +1,76 @@
 # saltstack-wrt
 
-Dokumentace Salt minionu a jeho doplňků pro OpenWrt a Turris OS.
-Popisuje chování zdejší implementace, její omezení a použití v Salt states.
+This documentation describes the Salt minion add-ons for OpenWrt and Turris OS.
+Each guide includes requirements, supported operations, limits, and Salt examples.
 
-Začni modulem [opkg – správa balíčků](opkg.md): instalace z feedů,
-vlastních IPK a odstraňování balíčků pomocí standardních `pkg` states.
-Další návody a testovací protokoly jsou v doprovodném repozitáři
-[saltstack-wrt-tests](https://github.com/ja-pa/saltstack-wrt-tests/tree/codex/documentation-cleanup/docs).
+## Module guides
 
-## Práce s dokumentací
+| Module | Use it to | Guide |
+| --- | --- | --- |
+| `pkg` with the opkg provider | Install missing packages and remove installed packages. | [opkg: Package management](opkg.md) |
+| `uci` | Read configuration, prepare changes, and commit them in a separate step. | [UCI: Explicit commit](uci.md) |
+| `wrt_config` | Manage and save one UCI configuration in one state. | [wrt_config: Automatic commit](wrt-config.md) |
+| `service` with the procd provider | Manage services and reload them after a configuration change. | [service: procd management](service.md) |
 
-Zdrojem jsou Markdown soubory v `docs/`; navigaci určuje `mkdocs.yml`
-v kořeni repozitáře. Novou stránku přidej také do jeho položky `nav`.
+Use `wrt_config.managed` for a declaration that includes an automatic commit.
+Use `uci.*` when you need separate change and commit steps.
+Use a service state to apply a saved configuration to a running service.
 
-Příkazy spouštěj z kořene balíčkového repozitáře `saltstack-wrt`.
-Je-li připojen jako submodule v testovacím repozitáři, nejprve spusť
-`cd saltstack-wrt`. Potom vytvoř prostředí:
+## Edit the documentation
+
+The Markdown source files are in `docs/`.
+The root `mkdocs.yml` file defines the navigation.
+When you add a page, add it to the `nav` setting as well.
+
+Execute documentation commands from the package repository root.
+If the repository is a submodule of the test repository, first execute:
+
+```sh
+cd saltstack-wrt
+```
+
+Create a Python environment:
 
 ```sh
 python -m venv .venv-docs
 ```
 
-Aktivace v Linuxu / WSL:
+On Linux or WSL, activate it with:
 
 ```sh
 . .venv-docs/bin/activate
 ```
 
-Aktivace v PowerShellu:
+On PowerShell, activate it with:
 
 ```powershell
 .\.venv-docs\Scripts\Activate.ps1
 ```
 
-Potom nainstaluj závislosti a spusť náhled:
+Install the documentation dependencies:
 
 ```sh
 python -m pip install -r requirements-docs.txt
+```
+
+Start the local preview:
+
+```sh
 python -m mkdocs serve
 ```
 
-Lokální náhled je na `http://127.0.0.1:8000/` a průběžně reaguje na úpravy.
-Statické HTML vytvoříš příkazem:
+Open `http://127.0.0.1:8000/` in a browser.
+The preview updates when you edit the source files.
+
+## Build the documentation
 
 ```sh
 python -m mkdocs build --strict
 ```
 
-Výchozí výstup je v ignorovaném adresáři `site/`. Jiné umístění lze zadat
-pomocí `--site-dir /cesta/k/vystupu`. Publikování zatím není nastavené.
-Podrobnosti jsou v [oficiálním návodu MkDocs](https://www.mkdocs.org/getting-started/)
-a [referenci konfigurace](https://www.mkdocs.org/user-guide/configuration/).
+The default output directory is `site/`. Git ignores this directory.
+To use another output directory, add `--site-dir /path/to/output`.
+Publishing is not configured.
+
+For more information, see the [MkDocs guide](https://www.mkdocs.org/getting-started/)
+and the [configuration reference](https://www.mkdocs.org/user-guide/configuration/).

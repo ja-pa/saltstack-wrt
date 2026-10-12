@@ -5,9 +5,10 @@ This repository can be built on its own; it does not depend on the test reposito
 
 ## Documentation
 
-The [MkDocs documentation](docs/index.md) includes an
-[opkg guide with Salt state examples](docs/opkg.md). Run MkDocs from this
-repository's root; setup and preview instructions are in the documentation.
+The [MkDocs documentation](docs/index.md) includes guides for
+[opkg](docs/opkg.md), [UCI](docs/uci.md), [wrt_config](docs/wrt-config.md),
+and [service/procd](docs/service.md), with Salt state examples.
+Run MkDocs from this repository's root; setup and preview instructions are in the documentation.
 Existing guides and verification reports remain in the companion test repository.
 
 ## Bytecode packaging

@@ -1,9 +1,13 @@
 site_name: saltstack-wrt
-site_description: Dokumentace Salt minionu a modulů pro OpenWrt a Turris OS
+site_description: Salt minion and module documentation for OpenWrt and Turris OS
 docs_dir: docs
 site_dir: site
 theme:
   name: mkdocs
 nav:
-  - Úvod: index.md
-  - 'opkg: Package management': opkg.md
+  - Introduction: index.md
+  - Modules:
+      - 'opkg: Package management': opkg.md
+      - 'UCI: Explicit commit': uci.md
+      - 'wrt_config: Automatic commit': wrt-config.md
+      - 'service: procd management': service.md
