@@ -129,6 +129,20 @@ save-demo:
 `replace: false` preserves the contents of an existing file.
 The example sets the file mode to `0600`.
 
+After a successful commit, an initially empty `/etc/config/salt_uci_demo`
+contains these data:
+
+```uci
+config settings 'main'
+    option label 'My device'
+    list peers 'server-a'
+    list peers 'server-b'
+```
+
+The `obsolete` option is absent.
+If the file already contained other sections or options, those data remain.
+UCI can change quoting and spacing. The example shows the saved values, not exact formatting.
+
 Use `name` to separate the state ID from the UCI section, option, or configuration name.
 For `uci.section_present`, `name` is the section name.
 For option and list states, `name` is the option name.

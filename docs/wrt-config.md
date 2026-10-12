@@ -1,281 +1,160 @@
-# wrt_config: Configuration with an automatic commit
+# wrt_config: Save UCI configuration in one state
 
-Use `wrt_config.managed` to manage one UCI configuration in one Salt state.
-The state validates the declaration, prepares changes, verifies the result,
-and saves the configuration with one commit.
+Use `wrt_config.managed` to change UCI values and save them with one commit.
+Install `minion-uci` on the minion. The master uses standard Salt.
+Use a separate service state to apply the saved configuration.
 
-The module is part of `minion-uci`.
-It shares the requirements and ownership checks of the [UCI module](uci.md).
-The existing `uci.*` functions remain available.
-The module does not reload services automatically.
+## Example: Change the LAN DHCP pool
 
-This guide describes the local implementation for Salt 3008.3.
+This example manages the existing `lan` section in `/etc/config/dhcp`.
+It changes the pool start, address count, and lease time.
+It preserves the interface setting, other options, and other sections.
+The fields follow the [OpenWrt DHCP configuration](https://github.com/openwrt/openwrt/blob/openwrt-24.10/package/network/services/dnsmasq/files/dhcp.conf).
 
-## Supported operations
-
-| Operation | Behavior |
-| --- | --- |
-| Create a configuration | Creates a missing file in `/etc/config` with owner `root:root` and mode `0600`. |
-| Manage selected values | Changes declared options and lists. Preserves other data by default. |
-| Create named sections | Requires a section type for each new section. |
-| Remove options | Removes options named in `absent` or lists declared as `[]`. |
-| Replace section contents | Removes undeclared options in a section with `replace: true`. |
-| Replace a complete configuration | Removes undeclared sections and options, including all anonymous sections. |
-| Save and verify | Performs one commit when changes are necessary. Verifies saved data and empty pending changes. |
-| Preview changes | Plans the result without writing files, pending data, or ownership records. |
-
-## Salt state examples
-
-The examples use the master's `/srv/salt` directory and minion ID `openwrt-test`.
-Use the paths and ID from your configuration.
-They manage the demonstration configuration `salt_wrt_demo`.
-
-### Manage selected sections and values
-
-Create `/srv/salt/demo-config.sls` with this content:
+Create `/srv/salt/lan-dhcp.sls` on the master:
 
 ```yaml
-demo-config:
+lan-dhcp:
   wrt_config.managed:
-    - name: salt_wrt_demo
+    - name: dhcp
     - sections:
-        main:
-          type: settings
+        lan:
+          type: dhcp
           options:
-            enabled: '1'
-            label: 'My device'
-          lists:
-            peers: ['server-a', 'server-b']
-          absent: [obsolete]
+            start: '100'
+            limit: '50'
+            leasetime: '12h'
 ```
 
-The state creates the configuration file if it is missing.
-It creates the named section `main` if necessary.
-It sets two scalar options and replaces the complete `peers` list.
-It removes `obsolete` if that option exists.
-It then verifies and commits the changes.
+`name: dhcp` selects `/etc/config/dhcp`. It is not a file path.
+`lan` is the named section. Its existing type must be `dhcp`.
+Quote UCI values, including numbers, so that YAML reads them as strings.
 
-The state ID `demo-config` is independent of the configuration name `salt_wrt_demo`.
-Other sections and undeclared options remain unchanged.
-An existing `main` section must have type `settings`.
-You can omit `type` when the section already exists.
+If the existing section uses `interface 'lan'`, its saved data include:
 
-### Use pillar for a sensitive value
-
-Put this data in a pillar assigned to the minion:
-
-```yaml
-demo:
-  password: 'example-only'
+```uci
+config dhcp 'lan'
+    option interface 'lan'
+    option start '100'
+    option limit '50'
+    option leasetime '12h'
 ```
 
-Use this state instead of the previous example:
-
-```yaml
-demo-config:
-  wrt_config.managed:
-    - name: salt_wrt_demo
-    - sensitive: true
-    - sections:
-        main:
-          type: settings
-          options:
-            enabled: '1'
-            password: {{ salt['pillar.get']('demo:password') | tojson }}
-```
-
-Use your secret storage instead of the example password.
-The `tojson` filter produces a valid YAML value.
-The pillar value must be a nonempty string.
-
-`sensitive: true` redacts all non-null values in the planned and reported changes.
-This includes values removed by the state.
-It does not encrypt files or redact Salt pillar, rendered states, or job caches.
-
-### Replace the contents of one section
-
-```yaml
-demo-config:
-  wrt_config.managed:
-    - name: salt_wrt_demo
-    - sections:
-        main:
-          type: settings
-          replace: true
-          options:
-            enabled: '1'
-```
-
-This declaration keeps only `enabled` in the `main` section.
-It removes all other options and lists from that section.
-It preserves other sections.
-
-### Replace the complete configuration
-
-```yaml
-demo-config:
-  wrt_config.managed:
-    - name: salt_wrt_demo
-    - replace: true
-    - sections:
-        main:
-          type: settings
-          options:
-            enabled: '1'
-```
-
-**Configuration-level `replace: true` removes every undeclared section,
-including all anonymous sections.**
-It also removes undeclared options from the declared sections.
-A nested `replace: false` is not valid with configuration-level replacement.
-
-Use this mode only when the declaration describes the complete required configuration.
-The module cannot declare anonymous sections.
-
-### Reload a service after a saved change
-
-Add this state after `demo-config`:
-
-```yaml
-demo-service:
-  service.running:
-    - name: my-service
-    - reload: true
-    - require:
-      - wrt_config: demo-config
-    - watch:
-      - wrt_config: demo-config
-```
-
-Use the actual name of a procd service with an explicit reload handler.
-This example requires `minion-service`.
-See [service/procd](service.md) for reload requirements and limits.
-
-`require` prevents the service step if the configuration state fails.
-For an already running service, `watch` requests a reload after a saved change.
-For a stopped service, `service.running` starts the service.
-A failed reload does not undo the saved configuration.
+Other existing options remain. UCI can change spacing, quoting, and comments.
+Use pool values suitable for your LAN subnet.
 
 ### Preview and apply
 
-```sh
-salt openwrt-test state.apply demo-config test=True
-salt openwrt-test state.apply demo-config
-salt openwrt-test state.apply demo-config
-```
-
-The preview also works when the configuration file does not yet exist.
-It does not write the file, pending data, or ownership records.
-The state returns `result: null` when it plans changes.
-It returns `result: true` with empty `changes` when the configuration already matches.
-
-A successful application returns `result: true`.
-A failed application returns `result: false`.
-A repeated matching application does not commit again.
-
-Each state has its own change and commit cycle.
-Put related changes for one configuration in one state.
-
-## Interface and declaration rules
-
-State interface:
-
-```python
-wrt_config.managed(name, sections, replace=False, sensitive=False)
-```
-
-Execution interface:
-
-```python
-wrt_config.apply(name, sections, replace=False, sensitive=False, test=False)
-```
-
-`name` is a configuration name, not a path.
-`sections` is a required mapping of named sections.
-The execution function returns a change dictionary and raises an exception on failure.
-The state uses Salt's global `test=True` setting for a preview.
-
-For a direct preview, execute:
+Replace `openwrt-test` with your minion ID:
 
 ```sh
-salt openwrt-test wrt_config.apply salt_wrt_demo 'sections={"main":{"type":"settings","options":{"enabled":"1"}}}' test=True
+salt openwrt-test state.apply lan-dhcp test=True
+salt openwrt-test state.apply lan-dhcp
 ```
 
-Omit `test=True` to apply and save the declaration.
-The configuration name and declaration must meet the same rules as the state.
+The preview does not write files or pending changes.
+Apply saves and verifies the declared values.
+A repeated matching run returns empty `changes` and does not commit again.
+Saving the file alone does not apply the settings to dnsmasq.
 
-| Section field | Accepted value | Behavior |
-| --- | --- | --- |
-| `type` | A valid UCI section type. | Required for a new section. A different existing type is rejected. |
-| `replace` | A boolean. | Removes undeclared options from this section when true. |
-| `options` | A mapping of option names to nonempty strings. | Sets scalar values. |
-| `lists` | A mapping of option names to lists of strings. | Replaces complete lists, including order and duplicates. |
-| `absent` | A list of option names. | Removes the specified options. |
+### Reload a service after a saved change
 
-An option cannot appear in more than one of `options`, `lists`, and `absent`.
-Unknown fields and invalid declarations are rejected before a write.
-Quote numbers and booleans used as UCI values in YAML.
-Null values are not accepted.
-The [UCI input rules](uci.md#input-rules-and-limits) also apply here.
+Add this state to the same SLS file:
 
-An empty list, `[]`, removes the option.
-A list containing an empty string, `['']`, remains a list with one item.
-Lists with one item do not become scalar values.
+```yaml
+apply-lan-dhcp:
+  service.running:
+    - name: dnsmasq
+    - reload: true
+    - require:
+      - wrt_config: lan-dhcp
+    - watch:
+      - wrt_config: lan-dhcp
+```
 
-With partial management, `sections: {}` preserves existing data.
-With configuration-level replacement, it removes all sections.
-Either mode creates an empty file if the configuration does not exist.
-The state does not change an existing file's permissions.
+This requires `minion-service` and a procd dnsmasq script with `reload_service()`.
+If dnsmasq is running, a saved change requests a reload.
+If dnsmasq is stopped, Salt starts it.
+If the configuration state fails, `require` prevents the service step.
+An unchanged configuration does not request a reload.
 
-Existing section order is preserved. New sections follow declaration order.
-UCI can change formatting and remove comments when it saves the file.
+A failed reload does not undo the commit.
+An init script's reload handler can restart processes internally.
+Existing automatic UCI triggers can also cause an additional reload.
+See [service/procd](service.md#status-timeouts-and-reload-limits) for these limits.
 
-## Pending changes and recovery
+## Use pillar for values that differ between routers
 
-Resolve pending changes before you use `wrt_config`.
-The module rejects all pending changes, including changes prepared through `uci.*`
-by the same minion.
-Inspect those changes before you save or discard them.
-When migrating from `uci.*`, use a separate `uci.commit` after that inspection.
+Assign this pillar data to the minion:
 
-A nonempty runtime override in `/var/run/uci/<name>` is also rejected.
-Resolve the override before you manage the persistent configuration.
+```yaml
+lan_dhcp:
+  start: '100'
+  limit: '50'
+  leasetime: '12h'
+```
 
-The module shares the UCI configuration lock and ownership records.
-It blocks the record before its first change.
-The record remains blocked until the commit passes verification.
-A process failure or write error requires manual recovery.
-The module does not perform an automatic rollback.
+In the `lan-dhcp` state, replace the `options` mapping with:
 
-**A failed state returns empty `changes`. Files or pending data can still have changed.**
+```yaml
+options:
+  start: {{ salt['pillar.get']('lan_dhcp:start') | tojson }}
+  limit: {{ salt['pillar.get']('lan_dhcp:limit') | tojson }}
+  leasetime: {{ salt['pillar.get']('lan_dhcp:leasetime') | tojson }}
+```
 
-Use the [UCI recovery procedure](uci.md#pending-changes-and-recovery) for the affected configuration.
-For this example, the default record is
-`/var/cache/salt/minion/uci/salt_wrt_demo.json`.
-If a new-file operation failed, also check whether the file was created.
-Verify the saved data, pending data, and runtime override before you remove the record.
-A revert does not undo a completed commit.
+The `tojson` filter keeps the rendered YAML valid.
+All three pillar values must be strings and must exist.
+For secrets, add `sensitive: true` at the same level as `name` and `sections`.
+It redacts all non-null reported values, including removed values.
+It does not encrypt files or redact Salt pillar, rendered states, or job caches.
 
-The lock serializes Salt operations. It does not lock out LuCI or Foris.
-External writes remain possible between checks and operations.
-Several configurations do not form one atomic transaction.
+## Other declarations
 
-## Changes and limits
+Put related changes for one configuration in one `wrt_config.managed` state.
+Use the following fields inside each named section:
 
-Changes use `configuration.section.option` keys with `old` and `new` values.
-Section creation or removal reports the section type.
-File creation has a separate entry under the configuration name.
-Removed options are reported separately.
-Removed anonymous sections use their original `@type[index]` addresses in the report.
-These report addresses are not valid declaration targets.
+| Field | Use |
+| --- | --- |
+| `type` | Required for a new section. Optional for an existing section. Cannot change an existing type. |
+| `options` | Set scalar options to nonempty strings. |
+| `lists` | Replace complete lists of strings. Order and duplicates are significant. `[]` removes an option; `['']` keeps one empty item. |
+| `absent` | Remove the listed option names. |
+| `replace: true` | Remove undeclared options from this section. |
 
-The module does not rename sections, change existing section types, declare anonymous
-sections, reload services, or restore an earlier configuration automatically.
-Values are passed through standard input, not process arguments or a shell.
-Provider comments and errors do not include configuration values.
+Do not declare the same option in `options`, `lists`, and `absent`.
+Null values, numeric values, boolean values, and unknown fields are rejected.
+The [UCI input rules](uci.md#input-rules-and-limits) apply.
 
-## Implementation reference
+**At state level, `replace: true` removes all undeclared sections and options,
+including anonymous sections.** Do not use it for the partial DHCP example above.
+It would remove the anonymous dnsmasq section in a standard configuration.
+A nested `replace: false` is invalid in that mode.
 
-The execution module is `openwrt/feed/python-salt/files/wrt_config.py`.
-The state module is `openwrt/feed/python-salt/files/wrt_config_state.py`.
-The shared implementation is `openwrt/feed/python-salt/files/wrt_uci.py`.
+By default, `sections: {}` preserves existing data. With state-level replacement,
+it removes all sections. The module can create a missing configuration file with
+owner `root:root` and mode `0600`. It keeps existing file permissions.
+It can preview a missing file, but it cannot declare anonymous sections.
+
+For a direct function call, use
+`wrt_config.apply(name, sections, replace=False, sensitive=False, test=False)`.
+It returns a change dictionary or raises an exception.
+
+## Before use and after a failure
+
+Resolve pending UCI changes before you apply the state.
+This includes changes prepared through `uci.*` by the same minion.
+A nonempty `/var/run/uci/<name>` override must also be resolved first.
+
+On success, the state reports verified saved changes.
+On failure, it returns `result: false` and empty `changes`.
+**Empty `changes` after a failure does not mean that the files are unchanged.**
+There is no automatic rollback. A failed write can leave the ownership record blocked.
+
+Use the [UCI recovery procedure](uci.md#pending-changes-and-recovery).
+For this example, the default record is `/var/cache/salt/minion/uci/dhcp.json`.
+Verify the saved file, pending changes, and override before removing only that record.
+Reverting pending changes does not undo a completed commit.
+
+Salt locks its own operations. It cannot lock out LuCI or Foris.
+Several configuration states do not form one atomic transaction.
