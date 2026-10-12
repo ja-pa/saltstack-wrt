@@ -1,0 +1,9 @@
+site_name: saltstack-wrt
+site_description: Dokumentace Salt minionu a modulů pro OpenWrt a Turris OS
+docs_dir: docs
+site_dir: site
+theme:
+  name: mkdocs
+nav:
+  - Úvod: index.md
+  - opkg – správa balíčků: opkg.md

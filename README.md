@@ -3,6 +3,13 @@
 Package definitions and reproducible SDK build helpers for Salt 3008.3.
 This repository can be built on its own; it does not depend on the test repository.
 
+## Documentation
+
+The [MkDocs documentation](docs/index.md) includes an
+[opkg guide with Salt state examples](docs/opkg.md). Run MkDocs from this
+repository's root; setup and preview instructions are in the documentation.
+Existing guides and verification reports remain in the companion test repository.
+
 ## Bytecode packaging
 
 Both Omnia and x86_64 build Salt packages as `3008.3-r9`, using the target
