@@ -1,8 +1,53 @@
 # wrt_config: Save UCI configuration in one state
 
-Use `wrt_config.managed` to change UCI values and save them with one commit.
-Install `minion-uci` on the minion. The master uses standard Salt.
-Use a separate service state to apply the saved configuration.
+## Available calls
+
+### wrt_config.apply: Direct execution
+
+```python
+wrt_config.apply(name, sections, replace=False, sensitive=False, test=False)
+```
+
+Use this function for a direct change or preview.
+It returns a change dictionary. It returns `{}` if the configuration already matches.
+An invalid declaration or failed operation raises an exception.
+
+Preview a change to the existing `dhcp.lan` section:
+
+```sh
+salt openwrt-test wrt_config.apply dhcp \
+  'sections={"lan":{"options":{"limit":"50"}}}' test=True
+```
+
+To save the change, omit `test=True`:
+
+```sh
+salt openwrt-test wrt_config.apply dhcp \
+  'sections={"lan":{"options":{"limit":"50"}}}'
+```
+
+### wrt_config.managed: Salt state
+
+```python
+wrt_config.managed(name, sections, replace=False, sensitive=False)
+```
+
+Use this state to maintain configuration through an SLS file.
+It changes, verifies, and commits the declared values in one operation.
+Use `state.apply ... test=True` to preview the state.
+The next example shows a complete SLS file.
+
+### Parameters
+
+| Parameter | Meaning |
+| --- | --- |
+| `name` | Required configuration name. For example, `dhcp` selects `/etc/config/dhcp`. |
+| `sections` | Required mapping of named sections and their declared values. |
+| `replace` | Defaults to `false`. When true, removes undeclared sections and options. See [replacement limits](#declaration-rules). |
+| `sensitive` | Defaults to `false`. When true, redacts non-null values in reported changes. |
+| `test` | Execution function only. Defaults to `false`. When true, plans changes without writing them. |
+
+Use your minion ID instead of `openwrt-test` in all commands.
 
 ## Example: Change the LAN DHCP pool
 
@@ -106,10 +151,10 @@ options:
 The `tojson` filter keeps the rendered YAML valid.
 All three pillar values must be strings and must exist.
 For secrets, add `sensitive: true` at the same level as `name` and `sections`.
-It redacts all non-null reported values, including removed values.
+This also redacts removed values.
 It does not encrypt files or redact Salt pillar, rendered states, or job caches.
 
-## Other declarations
+## Declaration rules
 
 Put related changes for one configuration in one `wrt_config.managed` state.
 Use the following fields inside each named section:
@@ -136,11 +181,12 @@ it removes all sections. The module can create a missing configuration file with
 owner `root:root` and mode `0600`. It keeps existing file permissions.
 It can preview a missing file, but it cannot declare anonymous sections.
 
-For a direct function call, use
-`wrt_config.apply(name, sections, replace=False, sensitive=False, test=False)`.
-It returns a change dictionary or raises an exception.
+## Requirements and recovery
 
-## Before use and after a failure
+Install `minion-uci` on the minion. The master uses standard Salt.
+Use [UCI requirements](uci.md#requirements) for module availability and permissions.
+The examples require an existing `dhcp` configuration with a named `lan` section.
+The module does not reload services automatically.
 
 Resolve pending UCI changes before you apply the state.
 This includes changes prepared through `uci.*` by the same minion.
