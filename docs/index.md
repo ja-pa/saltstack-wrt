@@ -1,5 +1,7 @@
 # saltstack-wrt: Install and configure a router minion
 
+![OpenWrt + Salt Project: Salt minion for OpenWrt. Unofficial community package.](assets/salt-minion-openwrt.png)
+
 This project provides Salt 3008.3 minion packages for OpenWrt and Turris OS.
 The packages use TCP transport and include optional router modules.
 The Salt master runs on a separate computer.
