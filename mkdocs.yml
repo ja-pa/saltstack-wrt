@@ -6,4 +6,4 @@ theme:
   name: mkdocs
 nav:
   - Úvod: index.md
-  - opkg – správa balíčků: opkg.md
+  - 'opkg: Package management': opkg.md

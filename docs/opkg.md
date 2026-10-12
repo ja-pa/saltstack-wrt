@@ -1,78 +1,85 @@
-# opkg – správa balíčků
+# opkg: Package management
 
-Modul `opkg` propojuje správce balíčků OpenWrt a Turris OS se standardním
-rozhraním Salt `pkg`. Umožňuje zjistit nainstalované balíčky, obnovit indexy
-feedů, instalovat chybějící balíčky a odstraňovat je. Slouží zejména
-pro deklarativní zajištění přítomnosti nebo nepřítomnosti balíčku.
+The `opkg` module connects the OpenWrt and Turris OS package manager to Salt's
+standard `pkg` interface. Use it to inspect installed packages, update feed
+indexes, install missing packages, and remove packages.
 
-V Salt kódu se volá **`pkg.installed` / `pkg.removed`** a v příkazech
-**`pkg.install` / `pkg.remove`**. Název `opkg` označuje provider, který tato
-volání na minionu provede; vlastní `opkg.installed` state zde není.
+Use `pkg.installed` and `pkg.removed` in Salt state files.
+Use `pkg.install` and `pkg.remove` for direct function calls.
+The `opkg` provider executes these operations on the minion.
+It does not provide an `opkg.installed` state.
 
-## Předpoklady
+This guide describes the local implementation for Salt 3008.3.
 
-- Na minionu je doplněk `minion-opkg`. Je také součástí metabalíčku
-  `minion-openwrt`; samotný základní `salt-minion` ho nevyžaduje.
-- Program `opkg` je dostupný v `PATH`.
-- Grain `os` nebo `os_family` odpovídá `OpenWrt`, `TurrisOS` nebo `Turris`
-  (bez ohledu na velikost písmen).
-- Minion má oprávnění zapisovat do systému a databáze opkg.
-  Pro instalaci z feedů musí mít nakonfigurované feedy a přístup k nim.
+## Requirements
 
-Provider se při splnění podmínek načte automaticky jako `pkg`; není potřeba
-ručně nastavovat `providers`. Master používá běžné Salt states bez vlastního
-opkg doplňku. Balení a načtení doplňků popisuje [návod k doplňkům](https://github.com/ja-pa/saltstack-wrt-tests/blob/codex/documentation-cleanup/docs/package-addons.md).
+Make sure that the minion meets these requirements:
 
-Dokumentace odpovídá zdejší implementaci pro Salt 3008.3.
+- The `minion-opkg` package is installed on OpenWrt or Turris OS.
+  The `minion-openwrt` metapackage includes this package.
+  The base `salt-minion` package does not require it.
+- The `opkg` executable is available in `PATH`.
+- The `os` or `os_family` grain is `OpenWrt`, `TurrisOS`, or `Turris`.
+  The provider ignores letter case for this check.
+- The minion can write to the system and the opkg package database.
+- For installation from feeds, the minion has configured feeds and can access them.
 
-## Co modul umí
+Salt loads the provider automatically as `pkg` when these conditions are met.
+Manual `providers` configuration is not required.
+The master uses standard Salt states. It does not need the opkg add-on.
 
-| Operace | Salt rozhraní | Chování |
+## Supported operations
+
+| Operation | Salt interface | Behavior |
 | --- | --- | --- |
-| Inventář | `pkg.list_pkgs` | Vrátí názvy a verze nainstalovaných balíčků. |
-| Verze balíčku | `pkg.version` | Vrátí nainstalovanou verzi; pro chybějící balíček prázdný řetězec. |
-| Obnova indexů | `pkg.refresh_db` | Spustí `opkg update` nad nakonfigurovanými feedy. |
-| Instalace z feedů | `pkg.install`, `pkg.installed` | Instaluje chybějící balíčky podle názvu, včetně závislostí řešených opkg. |
-| Instalace IPK | `pkg.install` / `pkg.installed` s `sources` | Přijímá absolutní cestu na minionu nebo `salt://` soubor. Rozdíl v práci s verzí je popsán níže. |
-| Odstranění | `pkg.remove`, `pkg.removed` | Odstraní přítomné balíčky podle přesného názvu. |
-| Dostupná novější verze | `pkg.latest_version` | Čte indexy feedů; balíček neaktualizuje. |
-| Porovnání verzí | `pkg.version_cmp` | Používá `opkg compare-versions` a vrací `-1`, `0` nebo `1`. |
+| List installed packages | `pkg.list_pkgs` | Returns package names and installed versions. |
+| Read an installed version | `pkg.version` | Returns the installed version. Returns an empty string for a missing package. |
+| Update feed indexes | `pkg.refresh_db` | Executes `opkg update` for the configured feeds. |
+| Install from feeds | `pkg.install`, `pkg.installed` | Installs missing packages by name. Opkg resolves dependencies. |
+| Install an IPK file | `pkg.install`, `pkg.installed` with `sources` | Accepts an absolute path on the minion or a `salt://` URL. See the version limits below. |
+| Remove packages | `pkg.remove`, `pkg.removed` | Removes installed packages by exact name. |
+| Read an available version | `pkg.latest_version` | Reads feed indexes. Does not update installed packages. |
+| Compare versions | `pkg.version_cmp` | Uses `opkg compare-versions`. Returns `-1`, `0`, or `1`. |
 
-Instalace podle názvu je idempotentní: již přítomný balíček se přeskočí.
-Odstranění nepřítomného balíčku také nic nemění. Opakované execution volání
-v těchto případech vrací `{}`; splněný state má prázdné `changes`.
+Installation by name skips packages that are already installed.
+Removal skips packages that are already absent.
+In these cases, direct function calls return `{}`.
+A state that already meets the requirement returns empty `changes`.
 
-## Příklady Salt states
+## Salt state examples
 
-Následující ukázky jsou samostatné soubory SLS. Předpokládají výchozí
-`file_roots` masteru s adresářem `/srv/salt` a minion s ID `openwrt-test`.
-Vlastní ID a cesty uprav podle konfigurace. Balíčky `curl` a `jq` musí být
-dostupné v nakonfigurovaných feedech pro daný systém.
+Each example is a separate SLS file.
+The examples use `/srv/salt` as the master's `file_roots` directory.
+The minion ID is `openwrt-test`.
+Use the paths and minion ID from your configuration.
 
-### Jeden balíček z feedu
+The configured feeds must contain `curl` and `jq` for the target system.
 
-Soubor `/srv/salt/balicky.sls`:
+### Install one package from a feed
+
+Create `/srv/salt/packages.sls` with this content:
 
 ```yaml
 curl:
   pkg.installed: []
 ```
 
-Salt použije ID stavu `curl` jako název balíčku. Chceš-li popisnější ID,
-uveď název výslovně:
+Salt uses the state ID, `curl`, as the package name.
+To use a different state ID, specify `name`:
 
 ```yaml
-nastroj-pro-http:
+http-client:
   pkg.installed:
     - name: curl
 ```
 
-Obě varianty zajišťují přítomnost `curl`. Existující starší verzi ponechají.
+Both examples make sure that `curl` is installed.
+They keep an older version if it is already installed.
 
-### Více balíčků a obnova indexů
+### Install several packages and update feed indexes
 
 ```yaml
-diagnosticke-nastroje:
+diagnostic-tools:
   pkg.installed:
     - pkgs:
       - curl
@@ -80,76 +87,85 @@ diagnosticke-nastroje:
     - refresh: true
 ```
 
-`refresh: true` vyžádá před instalací obnovu indexů. `refresh: false` ji
-pro dané volání vypne. Bez uvedení parametru používá standardní
-`pkg.installed` mechanismus Salt refresh markeru: úspěšná obnova se sdílí
-s dalšími package states ve stejném běhu. Neúspěšná obnova marker nesmaže.
-Přímé execution volání `pkg.install` má naopak výchozí `refresh=False`.
+Use `refresh: true` to request a feed index update before installation.
+Use `refresh: false` to disable the index update for that call.
 
-### Balíček ze Salt fileserveru
+If you omit `refresh`, `pkg.installed` uses Salt's standard refresh marker.
+A successful update clears the marker for later package states in the same run.
+A failed update does not clear the marker.
 
-Umísti vlastní IPK například do
-`/srv/salt/packages/moje-aplikace_1.0-r1_all.ipk` a vytvoř SLS:
+The direct `pkg.install` function defaults to `refresh=False`.
+
+### Install an IPK file from the Salt fileserver
+
+Put the IPK file in `/srv/salt/packages/my-app_1.0-r1_all.ipk`.
+Create a state file with this content:
 
 ```yaml
-moje-aplikace:
+my-app:
   pkg.installed:
     - sources:
-      - moje-aplikace: salt://packages/moje-aplikace_1.0-r1_all.ipk
+      - my-app: salt://packages/my-app_1.0-r1_all.ipk
     - refresh: false
 ```
 
-Soubor se stáhne do cache minionu. Klíč `moje-aplikace` musí být skutečný název
-z pole `Package` v IPK, nikoli název souboru. `salt://` používá prostředí
-`saltenv` (výchozí `base`). IPK a jeho závislosti musí odpovídat cílovému systému.
-Parametr `refresh: false` je vhodný, pokud má minion potřebné indexy nebo
-již nainstalované všechny závislosti; jinak lze použít `refresh: true`.
+Salt downloads the file to the minion's cache.
+The key `my-app` must match the `Package` field in the IPK metadata.
+The file name does not determine the package name.
 
-**Tento state zajišťuje přítomnost, ne shodu verze s IPK.** Pokud je
-`moje-aplikace` už nainstalovaná, nahrazení souboru na masteru novější verzí
-nevyvolá automatickou aktualizaci. Provider neposkytuje `lowpkg.bin_pkg_info`,
-které obecný state potřebuje pro porovnání nainstalované verze s IPK.
+The `salt://` URL uses `saltenv`, which defaults to `base`.
+The IPK file and its dependencies must be suitable for the target system.
 
-### IPK uložené na minionu
+Use `refresh: false` if the minion has the necessary indexes or all dependencies
+are already installed. Otherwise, use `refresh: true`.
 
-Pokud už soubor leží na routeru:
+**This state checks package presence. It does not check the IPK version.**
+If `my-app` is already installed, a newer IPK file on the master does not cause
+an automatic update.
+The provider does not implement `lowpkg.bin_pkg_info`.
+The standard Salt state needs that function to compare installed and IPK versions.
+
+### Install an IPK file stored on the minion
+
+If the file is already on the router, use an absolute path:
 
 ```yaml
-moje-aplikace:
+my-app:
   pkg.installed:
     - sources:
-      - moje-aplikace: /tmp/moje-aplikace_1.0-r1_all.ipk
+      - my-app: /tmp/my-app_1.0-r1_all.ipk
     - refresh: false
 ```
 
-Cesta musí být absolutní a vztahuje se k **minionu**. Soubor musí existovat
-před spuštěním stavu. Platí stejné omezení porovnávání verzí jako pro `salt://`.
+The path refers to the **minion**.
+The file must exist before Salt executes the state.
+The same version limits apply as for a `salt://` source.
 
-### Odstranění balíčku
+### Remove a package
 
 ```yaml
-odstranit-jq:
+remove-jq:
   pkg.removed:
     - name: jq
 ```
 
-Více balíčků lze odebrat pomocí `pkgs`:
+To remove several packages, use `pkgs`:
 
 ```yaml
-odstranit-diagnostiku:
+remove-diagnostic-tools:
   pkg.removed:
     - pkgs:
       - curl
       - jq
 ```
 
-Opkg zachovává kontroly závislostí. Balíček, který potřebuje jiný
-nainstalovaný balíček, nemusí dovolit odstranit. Provider nepřidává automatické
-odstranění nepotřebných závislostí ani vynucené odebrání.
+Opkg keeps its dependency checks enabled.
+It can refuse to remove a package that another installed package needs.
+The provider does not force removal or automatically remove unused dependencies.
 
-### Soubor spravovaný až po instalaci balíčku
+### Manage a file after package installation
 
-Standardní Salt requisites lze použít i s tímto providerem:
+Use the standard Salt `require` requisite to set the execution order:
 
 ```yaml
 curl:
@@ -165,32 +181,40 @@ curl:
       - pkg: curl
 ```
 
-`require` zajistí pořadí: Salt spravuje soubor až po úspěšném zajištění balíčku.
-Ukázka spravuje celý obsah `/root/.curlrc`.
+Salt manages the file only after the package state succeeds.
+This example manages the complete content of `/root/.curlrc`.
 
-### Náhled a aplikování
+### Preview and apply a state file
 
-Pro soubor `/srv/salt/balicky.sls` spusť na masteru:
+For `/srv/salt/packages.sls`, execute these commands on the master.
+First, preview the changes:
 
 ```sh
-salt openwrt-test state.apply balicky test=True
-salt openwrt-test state.apply balicky
+salt openwrt-test state.apply packages test=True
 ```
 
-`test=True` neinstaluje ani neodstraňuje balíčky; zobrazí plánované změny.
-Náhled nepotvrzuje úspěch budoucí instalace ani použitelnost závislostí.
-Pro instalaci podle názvu čte dostupné verze z existujících indexů;
-samotný náhled běžných ukázek výše je neobnovuje ani s `refresh: true`.
-Potřebuješ-li čerstvé indexy, před náhledem výslovně spusť `pkg.refresh_db`.
+Then, apply the state file:
 
-Na routeru lze stejný SLS spustit přes `salt-call state.apply balicky`.
-Varianta `salt-call --local state.apply balicky` potřebuje SLS i případné
-`salt://` IPK v lokálních `file_roots`; nepoužívá fileserver masteru.
+```sh
+salt openwrt-test state.apply packages
+```
 
-## Přímé volání funkcí
+`test=True` shows planned changes. It does not install or remove packages.
+A preview does not confirm that installation or dependency resolution will succeed.
 
-Execution funkce slouží pro jednorázové operace a diagnostiku. Pro trvale
-požadovaný stav používej SLS ukázky výše.
+For installation by name, the preview reads available versions from existing indexes.
+The examples above do not update indexes during a preview, even with `refresh: true`.
+If you need current indexes, execute `pkg.refresh_db` before the preview.
+
+On the router, use `salt-call state.apply packages` to apply the same state file.
+For `salt-call --local state.apply packages`, put the SLS file in the local `file_roots`.
+Put any `salt://` IPK files there as well.
+The `--local` option does not use the master's fileserver.
+
+## Direct function calls
+
+Use direct function calls for individual operations and diagnostics.
+Use state files to maintain a required package configuration.
 
 ```sh
 salt openwrt-test pkg.list_pkgs
@@ -206,59 +230,74 @@ salt openwrt-test pkg.latest_version curl refresh=False
 salt openwrt-test pkg.version_cmp '1.0-r2' '1.0-r10'
 ```
 
-Stejné funkce lze volat lokálně, například `salt-call --local pkg.list_pkgs`.
-Inventář má tvar `{název: verze}`; `versions_as_list=True` vrací hodnoty
-jako seznamy. `use_context=False` vynutí nové čtení databáze místo cache
-aktuálního Salt kontextu. `pkg.version` vrací pro jeden název řetězec,
-pro více názvů slovník.
+You can call the same functions locally.
+For example, use `salt-call --local pkg.list_pkgs` on the router.
 
-`pkg.latest_version` vrací nejvyšší dostupnou verzi, pokud je novější než
-nainstalovaná nebo balíček dosud chybí. Pro neznámý balíček i pro již aktuální
-balíček vrátí `''`. Více názvů vrací slovník. Jde pouze o čtení, nikoli upgrade.
-Porovnávání respektuje opkg pořadí včetně release a prerelease suffixů.
+### Package information
 
-Přímá instalace vlastního IPK:
+`pkg.list_pkgs` returns a dictionary in the form `{name: version}`.
+With `versions_as_list=True`, each value is a list of versions.
+Use `use_context=False` to read the database again instead of using the cached inventory.
+
+`pkg.version` returns a string for one package name.
+For several package names, it returns a dictionary.
+
+`pkg.latest_version` returns the highest available version for a missing package
+or a package with an older installed version.
+It returns `''` if the package is unknown or already up to date.
+For several package names, it returns a dictionary.
+The function does not update installed packages.
+
+Version comparison uses opkg's ordering, including release and prerelease suffixes.
+
+### Direct IPK installation
 
 ```sh
-salt openwrt-test pkg.install 'sources=[{"moje-aplikace":"/tmp/moje-aplikace_1.0-r1_all.ipk"}]'
-salt openwrt-test pkg.install 'sources=[{"moje-aplikace":"salt://packages/moje-aplikace_1.0-r1_all.ipk"}]' saltenv=base
+salt openwrt-test pkg.install 'sources=[{"my-app":"/tmp/my-app_1.0-r1_all.ipk"}]'
+salt openwrt-test pkg.install 'sources=[{"my-app":"salt://packages/my-app_1.0-r1_all.ipk"}]' saltenv=base
 ```
 
-Na rozdíl od `pkg.installed` přímé `pkg.install sources=...` čte metadata IPK
-a porovnává jeho verzi s nainstalovanou. Stejnou verzi přeskočí, odlišnou
-předá opkg. Úspěch aktualizace závisí na opkg; downgrade se nevynucuje.
-Zdroje se kontrolují před zahájením instalace.
+The direct `pkg.install sources=...` call reads the IPK metadata and compares versions.
+It skips the file if the installed version is the same.
+If the version differs, it passes the file to opkg.
+Opkg determines whether the installation succeeds. The provider does not force a downgrade.
 
-## Co modul neumí
+The provider checks all source files before it starts installation.
 
-| Požadavek | Omezení |
+## Unsupported operations and limits
+
+| Operation or option | Limit |
 | --- | --- |
-| Automaticky udržovat nejnovější verzi | `pkg.latest` není podporovaný state pro tento provider, i když existuje čtecí `pkg.latest_version`. |
-| Hromadný nebo systémový upgrade | `pkg.upgrade` není implementované. Instalace podle názvu již přítomný balíček přeskočí. |
-| Vybrat konkrétní verzi z feedu | `version` ani verze v položkách `pkgs` nejsou podporované. |
-| Vynutit reinstall / downgrade | `reinstall=True` a force přepínače nejsou podporované. |
-| Purge a hold | `pkg.purge`, `pkg.purged` ani držení verzí nejsou podporované. |
-| Vybrat feed pro jedno volání | `fromrepo` není podporované; používá se konfigurace opkg na minionu. |
-| Vypnout kontrolu podpisů | `skip_verify=True` není podporované; platí konfigurace ověřování opkg. |
-| Obecné URL jako zdroj IPK | `sources` přijímá pouze absolutní cestu nebo `salt://`, nikoli `http://` / `https://`. |
-| Libovolný formát balíčku | Podporované je OpenWrt IPK s vnějším tar archivem a `control.tar.gz`, nikoli Debian ar archiv. |
-| Wildcardy a odebrání konkrétní verze | Odstranění používá přesné názvy bez globů a bez specifikace verze. |
-| Alternativní root a libovolné volby opkg | Například `root` ani obecné předávání CLI přepínačů nejsou podporované. |
-| Transakce s rollbackem | Operace s více balíčky není atomická; částečné změny se automaticky nevracejí. |
-| Správa politiky Turris Updateru | Instalace a odstranění přes opkg nemění jeho trvalá pravidla. |
+| Keep the latest installed version | The `pkg.latest` state is not supported. `pkg.latest_version` only reads version information. |
+| Upgrade all packages or the system | `pkg.upgrade` is not implemented. Installation by name skips installed packages. |
+| Select a feed version | The provider does not support `version` or version values in `pkgs`. |
+| Force reinstallation or a downgrade | The provider does not support `reinstall=True` or force options. |
+| Purge packages or hold versions | The provider does not support `pkg.purge`, `pkg.purged`, or version holds. |
+| Select a feed for one call | The provider does not support `fromrepo`. It uses the minion's opkg configuration. |
+| Disable signature checks | The provider does not support `skip_verify=True`. It uses opkg's verification configuration. |
+| Install an IPK from an HTTP URL | `sources` accepts absolute paths and `salt://` URLs. It does not accept `http://` or `https://` URLs. |
+| Install another package format | The provider accepts OpenWrt IPK files with an outer tar archive and `control.tar.gz`. It does not accept Debian ar archives. |
+| Remove by wildcard or version | Removal requires exact package names without a version selection. |
+| Use another root or arbitrary opkg options | The provider does not support `root` or general forwarding of opkg command options. |
+| Roll back a failed operation | Operations with several packages are not atomic. The provider does not undo partial changes. |
+| Manage Turris Updater policy | Opkg installation and removal do not change the Updater's persistent rules. |
 
-`pkgs` a `sources` nelze kombinovat v jednom volání. Názvy musí začínat
-písmenem nebo číslicí a smí dále obsahovat pouze ASCII písmena, číslice, `+`, `_`,
-`.` a `-`. Modul spouští opkg bez shellu.
+Use either `pkgs` or `sources` in one call. Do not combine them.
 
-Nepodporované parametry provider odmítá. Obecný Salt state však může už
-splněný požadavek vyhodnotit bez jeho volání; takový úspěch neznamená,
-že zdejší provider danou funkci podporuje.
+Package names must start with an ASCII letter or digit.
+The remaining characters can be ASCII letters, digits, `+`, `_`, `.`, or `-`.
+The provider executes opkg without a shell.
 
-## Změny a chyby
+The provider rejects unsupported options.
+However, a standard Salt state can report success without calling the provider
+if the requested condition is already met.
+That result does not mean that the provider supports the option.
 
-Po instalaci nebo odstranění modul znovu načte inventář a vrací skutečný
-rozdíl. Změny mohou obsahovat také závislosti, například:
+## Changes and errors
+
+After installation or removal, the provider reads the installed package inventory again.
+It returns the actual changes, including dependency changes.
+For example:
 
 ```yaml
 jq:
@@ -266,23 +305,19 @@ jq:
   new: 1.7.1-r1
 ```
 
-Verze je pouze ilustrační a závisí na cílovém feedu. Při odstranění bude
-`old` obsahovat původní verzi a `new` prázdný řetězec.
+The version is an example. The actual version depends on the target feed.
+For removal, `old` contains the previous version and `new` is an empty string.
 
-Chyba opkg obsahuje návratový kód, standardní i chybový výstup a zjištěné
-částečné změny. Pokud například instalace prvního balíčku uspěje a druhý
-chybí ve feedu, první může zůstat nainstalovaný i při neúspěchu celé operace.
-Neplatný IPK nebo nesoulad pole `Package` skončí chybou před instalací.
+An opkg error includes the exit code, standard output, error output, and detected
+partial changes.
+If the first package installs and the second package fails, the first package
+can remain installed.
+The provider does not automatically undo that change.
 
-## Ověření implementace
+An invalid IPK file causes an error before installation.
+A `Package` field that differs from the requested name also causes an error
+before installation.
 
-Dokumentace vychází z provideru
-`openwrt/feed/python-salt/files/opkg.py` v tomto balíčkovém repozitáři.
-Unit testy `tests/test-opkg-unit.py`, runtime scénář `tests/opkg-local-omnia.py`
-a stavy `tests/states/pkg-installed.sls` / `pkg-removed.sls` jsou v doprovodném
-[repozitáři saltstack-wrt-tests](https://github.com/ja-pa/saltstack-wrt-tests/tree/codex/documentation-cleanup/tests).
-Obecné package states Saltu zůstávají beze změny.
+## Implementation reference
 
-Postup ověřování a historické výsledky ARM testů jsou v
-[původní dokumentaci testovacího repozitáře](https://github.com/ja-pa/saltstack-wrt-tests/blob/codex/documentation-cleanup/docs/opkg.md#opakovatelné-ověření). Jejich rozsah neznamená
-ověření fyzické Omnie ani chování Turris Updateru.
+This guide is based on `openwrt/feed/python-salt/files/opkg.py` in this repository.
