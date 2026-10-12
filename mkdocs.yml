@@ -11,3 +11,4 @@ nav:
       - 'UCI: Explicit commit': uci.md
       - 'wrt_config: Automatic commit': wrt-config.md
       - 'service: procd management': service.md
+  - Documentation tools: documentation.md
