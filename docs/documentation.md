@@ -20,6 +20,9 @@ It then executes `mkdocs build --strict`.
 The output is `site/` in the package repository.
 A failed dependency installation or build returns a nonzero exit code.
 
+Open `site/index.html` to read the generated documentation directly from disk.
+Page links use `.html` filenames, so Next and Previous also work without a web server.
+
 The script finds the repository from its own path.
 You can call it from another working directory.
 You do not need to activate the environment.
@@ -56,6 +59,9 @@ The script installs dependencies only for `setup` or when MkDocs is missing.
 Edit the Markdown files in `docs/`.
 Add new pages to `nav` in `mkdocs.yml`.
 Use short sentences, consistent technical terms, and one instruction per sentence.
+
+The documentation uses MkDocs' built-in Read the Docs theme.
+Table borders and spacing are set in `docs/assets/stylesheets/extra.css`.
 
 The `site_dir` setting in `mkdocs.yml` selects the output directory.
 Its default is `site/`, which Git ignores.

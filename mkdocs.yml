@@ -2,8 +2,11 @@ site_name: saltstack-wrt
 site_description: Salt minion and module documentation for OpenWrt and Turris OS
 docs_dir: docs
 site_dir: site
+use_directory_urls: false
 theme:
-  name: mkdocs
+  name: readthedocs
+extra_css:
+  - assets/stylesheets/extra.css
 nav:
   - Introduction: index.md
   - Modules:

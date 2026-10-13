@@ -1,0 +1,32 @@
+/* Keep wide examples and tables readable on desktop and small screens. */
+.wy-nav-content {
+  max-width: 1100px;
+}
+
+.rst-content .section table.docutils {
+  display: table;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-collapse: collapse;
+}
+
+.rst-content table.docutils th,
+.rst-content table.docutils td {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  white-space: normal;
+  vertical-align: top;
+}
+
+.rst-content table.docutils thead th {
+  background: #eaf2f8;
+  color: #17324d;
+}
+
+.rst-content table.docutils tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.rst-content .wy-table-responsive {
+  overflow-x: auto;
+}
