@@ -24,11 +24,22 @@ define Package/python3-salt
     +python3-psutil +python3-jmespath
 endef
 
+define Package/python3-salt/description
+  Shared Python runtime for the Salt minion with TCP transport support.
+  Provides the Salt libraries used by the minion and OpenWrt add-ons.
+endef
+
 define Package/salt-minion
   SECTION:=admin
   CATEGORY:=Administration
   TITLE:=Salt minion for OpenWrt
   DEPENDS:=+python3-salt
+endef
+
+define Package/salt-minion/description
+  Salt minion for remote execution and configuration management on OpenWrt.
+  Includes salt-minion, salt-call, and a procd init script.
+  Requires a Salt master configured for TCP transport.
 endef
 
 define Package/minion-opkg
@@ -39,12 +50,23 @@ define Package/minion-opkg
   EXTRA_DEPENDS:=salt-minion (= $(PKG_VERSION)-r$(PKG_RELEASE)), python3-salt (= $(PKG_VERSION)-r$(PKG_RELEASE))
 endef
 
+define Package/minion-opkg/description
+  OpenWrt opkg provider for Salt package management functions and states.
+  Supports managing router packages through the Salt minion.
+endef
+
 define Package/minion-uci
   SECTION:=admin
   CATEGORY:=Administration
   TITLE:=Salt minion UCI execution and states
   DEPENDS:=+salt-minion +python3-salt +uci
   EXTRA_DEPENDS:=salt-minion (= $(PKG_VERSION)-r$(PKG_RELEASE)), python3-salt (= $(PKG_VERSION)-r$(PKG_RELEASE))
+endef
+
+define Package/minion-uci/description
+  Salt execution modules and states for OpenWrt UCI configuration.
+  Includes UCI operations and declarative wrt_config states with automatic
+  commit support.
 endef
 
 define Package/minion-service
@@ -57,6 +79,11 @@ define Package/minion-service
   EXTRA_DEPENDS:=procd, ubus, salt-minion (= $(PKG_VERSION)-r$(PKG_RELEASE)), python3-salt (= $(PKG_VERSION)-r$(PKG_RELEASE))
 endef
 
+define Package/minion-service/description
+  OpenWrt service provider for Salt using procd and ubus.
+  Supports Salt service management functions and states.
+endef
+
 # Integrations covered by the ARM suite and booted procd lifecycle tests.
 define Package/minion-openwrt
   SECTION:=admin
@@ -64,6 +91,11 @@ define Package/minion-openwrt
   TITLE:=Salt minion OpenWrt integrations (metapackage)
   DEPENDS:=+salt-minion +minion-opkg +minion-uci +minion-service
   EXTRA_DEPENDS:=salt-minion (= $(PKG_VERSION)-r$(PKG_RELEASE)), minion-opkg (= $(PKG_VERSION)-r$(PKG_RELEASE)), minion-uci (= $(PKG_VERSION)-r$(PKG_RELEASE)), minion-service (= $(PKG_VERSION)-r$(PKG_RELEASE))
+endef
+
+define Package/minion-openwrt/description
+  Installs the Salt minion and all OpenWrt integrations: opkg package
+  management, UCI configuration, and procd service management.
 endef
 
 # Patch 030 enables discovery of OpenWrt's adjacent .pyc files.
