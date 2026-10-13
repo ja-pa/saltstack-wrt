@@ -3,6 +3,16 @@
 Package definitions and reproducible SDK build helpers for Salt 3008.3.
 This repository can be built on its own; it does not depend on the test repository.
 
+## Documentation
+
+The [MkDocs documentation](docs/index.md) includes guides for
+[opkg](docs/opkg.md), [UCI](docs/uci.md), [wrt_config](docs/wrt-config.md),
+and [service/procd](docs/service.md), with Salt state examples.
+The introduction describes router package selection, installation, and minion configuration.
+Build the documentation with `python build-docs.py`; use `python build-docs.py serve` for a preview.
+See [documentation tools](docs/documentation.md) for setup and command help.
+Existing guides and verification reports remain in the companion test repository.
+
 ## Bytecode packaging
 
 Both Omnia and x86_64 build Salt packages as `3008.3-r10`, using the target
@@ -74,7 +84,7 @@ belong to the test repository. They are not required to build or export packages
 The minion uses TCP transport by default. Optional packages add opkg, UCI and
 procd/ubus providers; `minion-openwrt` installs the complete set.
 
-Playgrounds, automated tests, installation instructions and verification reports
+Playgrounds, automated tests and verification reports
 live in [saltstack-wrt-tests](https://github.com/ja-pa/saltstack-wrt-tests).
 That private repository pins this repository as its `saltstack-wrt/` submodule.
 Both repositories require GitHub access when cloning.
