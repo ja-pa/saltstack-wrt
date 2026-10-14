@@ -1,6 +1,8 @@
 # Salt 3008.3 / Turris minion: explicit package-relative removal list.
 # No runtime whitelist: custom modules may still be synced from a master.
 # Keep shared helpers, all optional minion subsystems, and import exceptions.
+# Passed as command-line arguments to prune.py; a sufficiently large list can
+# exceed the build host's command-line size limit. Use a manifest if it outgrows it.
 SALT_PRUNE_PATHS:=
 
 # Unused cloud drivers and deployment assets (keep shared cloud Python helpers)
